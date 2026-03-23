@@ -19,6 +19,7 @@ class BlockOfCode;
 #elif defined(MCL_ARCHITECTURE_ARM64)
 namespace oaknut {
 class CodeBlock;
+class DualCodeBlock;
 }  // namespace oaknut
 #elif defined(MCL_ARCHITECTURE_RISCV)
 namespace Dynarmic::Backend::RV64 {
@@ -55,6 +56,9 @@ public:
     void Register(X64::BlockOfCode& code);
 #elif defined(MCL_ARCHITECTURE_ARM64)
     void Register(oaknut::CodeBlock& mem, std::size_t mem_size);
+#    if defined(__APPLE__)
+    void Register(oaknut::DualCodeBlock& mem, std::size_t mem_size);
+#    endif
 #elif defined(MCL_ARCHITECTURE_RISCV)
     void Register(RV64::CodeBlock& mem, std::size_t mem_size);
 #else

@@ -21,6 +21,11 @@ void ExceptionHandler::Register(X64::BlockOfCode&) {
 void ExceptionHandler::Register(oaknut::CodeBlock&, std::size_t) {
     // Do nothing
 }
+#if defined(__APPLE__)
+void ExceptionHandler::Register(oaknut::DualCodeBlock&, std::size_t) {
+    // Do nothing
+}
+#endif
 #elif defined(MCL_ARCHITECTURE_RISCV)
 void ExceptionHandler::Register(RV64::CodeBlock&, std::size_t) {
     // Do nothing

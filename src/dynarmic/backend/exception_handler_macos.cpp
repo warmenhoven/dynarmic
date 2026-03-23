@@ -36,6 +36,7 @@ using dynarmic_thread_state_t = x86_thread_state64_t;
 #elif defined(MCL_ARCHITECTURE_ARM64)
 
 #    include <oaknut/code_block.hpp>
+#    include <oaknut/dual_code_block.hpp>
 #    define mig_external extern "C"
 #    include "dynarmic/backend/arm64/mig/mach_exc_server.h"
 
@@ -275,6 +276,11 @@ void ExceptionHandler::Register(X64::BlockOfCode& code) {
 #elif defined(MCL_ARCHITECTURE_ARM64)
 void ExceptionHandler::Register(oaknut::CodeBlock& mem, std::size_t size) {
     const u64 code_begin = mcl::bit_cast<u64>(mem.ptr());
+    const u64 code_end = code_begin + size;
+    impl = std::make_unique<Impl>(code_begin, code_end);
+}
+void ExceptionHandler::Register(oaknut::DualCodeBlock& mem, std::size_t size) {
+    const u64 code_begin = mcl::bit_cast<u64>(mem.xptr());
     const u64 code_end = code_begin + size;
     impl = std::make_unique<Impl>(code_begin, code_end);
 }

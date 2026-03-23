@@ -7,6 +7,9 @@
 
 #include <oaknut/code_block.hpp>
 #include <oaknut/oaknut.hpp>
+#if defined(__APPLE__)
+#    include <oaknut/dual_code_block.hpp>
+#endif
 
 #include "dynarmic/backend/arm64/abi.h"
 #include "dynarmic/common/spin_lock.h"
@@ -42,7 +45,11 @@ struct SpinLockImpl {
 
     void Initialize();
 
+#if defined(__APPLE__)
+    oaknut::DualCodeBlock mem;
+#else
     oaknut::CodeBlock mem;
+#endif
     oaknut::CodeGenerator code;
 
     void (*lock)(volatile int*);
@@ -54,10 +61,16 @@ SpinLockImpl impl;
 
 SpinLockImpl::SpinLockImpl()
         : mem{4096}
+#if defined(__APPLE__)
+        , code{mem.wptr(), mem.xptr()} {}
+#else
         , code{mem.ptr(), mem.ptr()} {}
+#endif
 
 void SpinLockImpl::Initialize() {
+#if !defined(__APPLE__)
     mem.unprotect();
+#endif
 
     lock = code.xptr<void (*)(volatile int*)>();
     EmitSpinLockLock(code, X0);
@@ -67,7 +80,9 @@ void SpinLockImpl::Initialize() {
     EmitSpinLockUnlock(code, X0);
     code.RET();
 
+#if !defined(__APPLE__)
     mem.protect();
+#endif
     mem.invalidate_all();
 }
 

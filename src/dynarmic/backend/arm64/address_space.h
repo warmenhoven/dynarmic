@@ -11,6 +11,10 @@
 #include <mcl/stdint.hpp>
 #include <oaknut/code_block.hpp>
 #include <oaknut/oaknut.hpp>
+
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+#    include <oaknut/dual_code_block.hpp>
+#endif
 #include <tsl/robin_map.h>
 #include <tsl/robin_set.h>
 
@@ -50,14 +54,34 @@ protected:
     virtual void RegisterNewBasicBlock(const IR::Block& block, const EmittedBlockInfo& block_info) = 0;
 
     void ProtectCodeMemory() {
-#if defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT) || defined(__APPLE__) || defined(__OpenBSD__)
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+        // Dual-mapped: no protection toggling needed
+#elif defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT) || defined(__APPLE__) || defined(__OpenBSD__)
         mem.protect();
 #endif
     }
 
     void UnprotectCodeMemory() {
-#if defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT) || defined(__APPLE__) || defined(__OpenBSD__)
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+        // Dual-mapped: no protection toggling needed
+#elif defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT) || defined(__APPLE__) || defined(__OpenBSD__)
         mem.unprotect();
+#endif
+    }
+
+    std::uint32_t* wmem() { return
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+        mem.wptr();
+#else
+        mem.ptr();
+#endif
+    }
+
+    std::uint32_t* xmem() { return
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+        mem.xptr();
+#else
+        mem.ptr();
 #endif
     }
 
@@ -70,7 +94,11 @@ protected:
     FakeCall FastmemCallback(u64 host_pc);
 
     const size_t code_cache_size;
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+    oaknut::DualCodeBlock mem;
+#else
     oaknut::CodeBlock mem;
+#endif
     oaknut::CodeGenerator code;
 
     // A IR::LocationDescriptor will have one current CodePtr.
