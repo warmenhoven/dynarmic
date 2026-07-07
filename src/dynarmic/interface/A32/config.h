@@ -15,6 +15,10 @@
 #include "dynarmic/interface/A32/arch_version.h"
 #include "dynarmic/interface/optimization_flags.h"
 
+namespace oaknut {
+struct ExternalAllocator;
+}  // namespace oaknut
+
 namespace Dynarmic {
 class ExclusiveMonitor;
 }  // namespace Dynarmic
@@ -237,6 +241,13 @@ struct UserConfig {
     // Minimum size is about 8MiB. Maximum size is about 128MiB (arm64 host) or 2GiB (x64 host).
     // Maximum size is limited by the maximum length of a x86_64 / arm64 jump.
     size_t code_cache_size = 128 * 1024 * 1024;  // bytes
+
+    /// Optional allocator the arm64 backend will use to obtain its
+    /// dual-mapped code memory. When null, the backend allocates with
+    /// mmap/vm_remap directly. Used by libretro frontends on iOS 26+
+    /// where the host needs to bless executable pages on the core's
+    /// behalf.
+    const oaknut::ExternalAllocator* external_allocator = nullptr;
 
     /// Internal use only
     bool very_verbose_debugging_output = false;

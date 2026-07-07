@@ -20,9 +20,13 @@
 
 namespace Dynarmic::Backend::Arm64 {
 
-AddressSpace::AddressSpace(size_t code_cache_size)
+AddressSpace::AddressSpace(size_t code_cache_size, const oaknut::ExternalAllocator* external_allocator)
         : code_cache_size(code_cache_size)
+#if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
+        , mem(code_cache_size, external_allocator)
+#else
         , mem(code_cache_size)
+#endif
         , code(wmem(), xmem())
         , fastmem_manager(exception_handler) {
     ASSERT_MSG(code_cache_size <= 128 * 1024 * 1024, "code_cache_size > 128 MiB not currently supported");

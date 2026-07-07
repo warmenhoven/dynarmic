@@ -14,6 +14,10 @@
 
 #if defined(__APPLE__) && defined(MCL_ARCHITECTURE_ARM64)
 #    include <oaknut/dual_code_block.hpp>
+#else
+namespace oaknut {
+struct ExternalAllocator;
+}
 #endif
 #include <tsl/robin_map.h>
 #include <tsl/robin_set.h>
@@ -28,7 +32,8 @@ namespace Dynarmic::Backend::Arm64 {
 
 class AddressSpace {
 public:
-    explicit AddressSpace(size_t code_cache_size);
+    explicit AddressSpace(size_t code_cache_size,
+                          const oaknut::ExternalAllocator* external_allocator = nullptr);
     virtual ~AddressSpace();
 
     virtual IR::Block GenerateIR(IR::LocationDescriptor) const = 0;

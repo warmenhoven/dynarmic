@@ -38,55 +38,56 @@ void EmitSpinLockUnlock(oaknut::CodeGenerator& code, oaknut::XReg ptr) {
     code.STLR(WZR, ptr);
 }
 
+static const oaknut::ExternalAllocator* s_spin_lock_allocator = nullptr;
+
 namespace {
 
 struct SpinLockImpl {
-    SpinLockImpl();
-
     void Initialize();
 
 #if defined(__APPLE__)
-    oaknut::DualCodeBlock mem;
+    std::unique_ptr<oaknut::DualCodeBlock> mem;
 #else
-    oaknut::CodeBlock mem;
+    std::unique_ptr<oaknut::CodeBlock> mem;
 #endif
-    oaknut::CodeGenerator code;
+    std::unique_ptr<oaknut::CodeGenerator> code;
 
-    void (*lock)(volatile int*);
-    void (*unlock)(volatile int*);
+    void (*lock)(volatile int*) = nullptr;
+    void (*unlock)(volatile int*) = nullptr;
 };
 
 std::once_flag flag;
 SpinLockImpl impl;
 
-SpinLockImpl::SpinLockImpl()
-        : mem{4096}
-#if defined(__APPLE__)
-        , code{mem.wptr(), mem.xptr()} {}
-#else
-        , code{mem.ptr(), mem.ptr()} {}
-#endif
-
 void SpinLockImpl::Initialize() {
-#if !defined(__APPLE__)
-    mem.unprotect();
+#if defined(__APPLE__)
+    mem = std::make_unique<oaknut::DualCodeBlock>(4096, s_spin_lock_allocator);
+    code = std::make_unique<oaknut::CodeGenerator>(mem->wptr(), mem->xptr());
+#else
+    mem = std::make_unique<oaknut::CodeBlock>(4096);
+    mem->unprotect();
+    code = std::make_unique<oaknut::CodeGenerator>(mem->ptr(), mem->ptr());
 #endif
 
-    lock = code.xptr<void (*)(volatile int*)>();
-    EmitSpinLockLock(code, X0);
-    code.RET();
+    lock = code->xptr<void (*)(volatile int*)>();
+    EmitSpinLockLock(*code, X0);
+    code->RET();
 
-    unlock = code.xptr<void (*)(volatile int*)>();
-    EmitSpinLockUnlock(code, X0);
-    code.RET();
+    unlock = code->xptr<void (*)(volatile int*)>();
+    EmitSpinLockUnlock(*code, X0);
+    code->RET();
 
 #if !defined(__APPLE__)
-    mem.protect();
+    mem->protect();
 #endif
-    mem.invalidate_all();
+    mem->invalidate_all();
 }
 
 }  // namespace
+
+void SetSpinLockAllocator(const oaknut::ExternalAllocator* alloc) {
+    s_spin_lock_allocator = alloc;
+}
 
 void SpinLock::Lock() {
     std::call_once(flag, &SpinLockImpl::Initialize, impl);
